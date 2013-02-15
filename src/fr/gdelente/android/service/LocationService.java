@@ -26,12 +26,16 @@ import android.location.LocationListener;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
+import fr.gdelente.android.utils.ILastLocationFinder;
+import fr.gdelente.android.utils.PlatformSpecificImplementationFactory;
 
 public class LocationService extends Service implements LocationListener {
 
 	private final IBinder mBinder = new LocationBinder();
 	private ArrayList<LocationListener> mListeners = new ArrayList<LocationListener>();
-	public final static String LOCATION_LISTENER = "location_listener";
+	private Location mLastLocation = null;
+	private ILastLocationFinder mLocationFinder = null;
 
 	/**
 	 * Class used for the client Binder. Because we know this service always
@@ -47,22 +51,22 @@ public class LocationService extends Service implements LocationListener {
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		mListeners.add((LocationListener) intent
-				.getParcelableExtra(LOCATION_LISTENER));
 		return mBinder;
 	}
 
 	@Override
 	public boolean onUnbind(Intent intent) {
-		mListeners.remove((LocationListener) intent
-				.getParcelableExtra(LOCATION_LISTENER));
 		return super.onUnbind(intent);
 	}
 
 	@Override
-	public void onLocationChanged(Location arg0) {
-		// TODO Auto-generated method stub
-
+	public void onLocationChanged(Location location) {
+		mLastLocation = location;
+		Log.d("LocationService", "location " + location);
+		for (LocationListener listener : mListeners) {
+			Log.d("LocationService", "Listener " + listener);
+			listener.onLocationChanged(location);
+		}
 	}
 
 	@Override
@@ -79,7 +83,35 @@ public class LocationService extends Service implements LocationListener {
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
-		// TODO Auto-generated method stub
-
+		// Put enabled providers in extras
 	}
+
+	public Location getLocation() {
+		return mLastLocation;
+	}
+
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		Log.d("LocationService", "onCreate");
+		mLocationFinder = PlatformSpecificImplementationFactory
+				.getLastLocationFinder(this, this);
+		mLocationFinder.getLastBestLocation(10, 1000);
+	}
+
+	@Override
+	public void onDestroy() {
+		Log.d("LocationService", "onDestroy");
+		mLocationFinder.cancel();
+		super.onDestroy();
+	}
+
+	public void addLocationListener(LocationListener locationListener) {
+		mListeners.add(locationListener);
+	}
+
+	public void removeLocationListener(LocationListener locationListener) {
+		mListeners.remove(locationListener);
+	}
+
 }
