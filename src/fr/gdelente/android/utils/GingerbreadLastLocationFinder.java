@@ -68,6 +68,7 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 		// The calling Activity will likely (or have already) request ongoing
 		// updates using the Fine location provider.
 		criteria = new Criteria();
+		// FIXME Change to LOW
 		criteria.setAccuracy(Criteria.ACCURACY_LOW);
 	}
 
@@ -127,11 +128,7 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 
 			Log.d("LocationService", "Requesting location updates with "
 					+ locationListener);
-			//Do I just found a bug?
-			/*
-			 * locationManager.requestLocationUpdates(0, 0, criteria,
-			 * locationListener, null);
-			 */
+
 		}
 
 		return bestResult;

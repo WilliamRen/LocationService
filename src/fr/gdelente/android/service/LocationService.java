@@ -96,7 +96,10 @@ public class LocationService extends Service implements LocationListener {
 		Log.d("LocationService", "onCreate");
 		mLocationFinder = PlatformSpecificImplementationFactory
 				.getLastLocationFinder(this, this);
-		mLocationFinder.getLastBestLocation(10, 1000);
+		Location location = mLocationFinder.getLastBestLocation(10, 1000);
+		if (location != null) {
+			onLocationChanged(location);
+		}
 	}
 
 	@Override
@@ -108,6 +111,8 @@ public class LocationService extends Service implements LocationListener {
 
 	public void addLocationListener(LocationListener locationListener) {
 		mListeners.add(locationListener);
+		if (mLastLocation != null)
+			locationListener.onLocationChanged(mLastLocation);
 	}
 
 	public void removeLocationListener(LocationListener locationListener) {
