@@ -23,6 +23,7 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -41,10 +42,10 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 
 	protected static String TAG = "PreGingerbreadLastLocationFinder";
 
-	protected LocationListener locationListener;
-	protected LocationManager locationManager;
-	protected Criteria criteria;
-	protected Context context;
+	protected LocationListener mLocationListener;
+	protected LocationManager mLocationManager;
+	protected Criteria mCriteria;
+	protected Context mContext;
 
 	/**
 	 * Construct a new Legacy Last Location Finder.
@@ -54,15 +55,15 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 	 */
 	public LegacyLastLocationFinder(Context context,
 			LocationListener locationListener) {
-		locationManager = (LocationManager) context
+		mLocationManager = (LocationManager) context
 				.getSystemService(Context.LOCATION_SERVICE);
-		this.locationListener = locationListener;
-		criteria = new Criteria();
+		this.mLocationListener = locationListener;
+		mCriteria = new Criteria();
 		// Coarse accuracy is specified here to get the fastest possible result.
 		// The calling Activity will likely (or have already) request ongoing
 		// updates using the Fine location provider.
-		criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-		this.context = context;
+		mCriteria.setAccuracy(Criteria.ACCURACY_COARSE);
+		this.mContext = context;
 	}
 
 	/**
@@ -85,9 +86,9 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 		// Iterate through all the providers on the system, keeping
 		// note of the most accurate result within the acceptable time limit.
 		// If no result is found within maxTime, return the newest Location.
-		List<String> matchingProviders = locationManager.getAllProviders();
+		List<String> matchingProviders = mLocationManager.getAllProviders();
 		for (String provider : matchingProviders) {
-			Location location = locationManager.getLastKnownLocation(provider);
+			Location location = mLocationManager.getLastKnownLocation(provider);
 			if (location != null) {
 				float accuracy = location.getAccuracy();
 				long time = location.getTime();
@@ -114,13 +115,13 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 		// Prior to Gingerbread "one-shot" updates weren't available, so we need
 		// to implement
 		// this manually.
-		if (locationListener != null
+		if (mLocationListener != null
 				&& (bestTime > minTime || bestAccuracy > minDistance)) {
-			String provider = locationManager.getBestProvider(criteria, true);
+			String provider = mLocationManager.getBestProvider(mCriteria, true);
 			if (provider != null) {
 				Log.d("LocationService", "Requestiong Legacy updates");
-				locationManager.requestLocationUpdates(provider, 0, 0,
-						singeUpdateListener, context.getMainLooper());
+				mLocationManager.requestLocationUpdates(provider, 0, 0,
+						singeUpdateListener, mContext.getMainLooper());
 			}
 		}
 
@@ -139,9 +140,9 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 					"Single Location Update Received: "
 							+ location.getLatitude() + ","
 							+ location.getLongitude());
-			if (locationListener != null && location != null)
-				locationListener.onLocationChanged(location);
-			locationManager.removeUpdates(singeUpdateListener);
+			if (mLocationListener != null && location != null)
+				mLocationListener.onLocationChanged(location);
+			mLocationManager.removeUpdates(singeUpdateListener);
 		}
 
 		public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -154,17 +155,34 @@ public class LegacyLastLocationFinder implements ILastLocationFinder {
 		}
 	};
 
+	private void enableTestProvider() {
+		mLocationManager.removeTestProvider("test");
+		mLocationManager.addTestProvider("test", "requiresNetwork" == "",
+				"requiresSatellite" == "", "requiresCell" == "",
+				"hasMonetaryCost" == "", "supportsAltitude" == "",
+				"supportsSpeed" == "", "supportsBearing" == "",
+
+				android.location.Criteria.POWER_LOW,
+				android.location.Criteria.ACCURACY_COARSE);
+
+		mLocationManager.setTestProviderEnabled("test", true);
+
+		mLocationManager.setTestProviderStatus("test",
+				LocationProvider.AVAILABLE, null, System.currentTimeMillis());
+
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
 	public void setChangedLocationListener(LocationListener l) {
-		locationListener = l;
+		mLocationListener = l;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void cancel() {
-		locationManager.removeUpdates(singeUpdateListener);
+		mLocationManager.removeUpdates(singeUpdateListener);
 	}
 }

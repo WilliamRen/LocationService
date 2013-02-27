@@ -7,7 +7,6 @@ import android.content.ServiceConnection;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.IBinder;
-import android.util.Log;
 import fr.gdelente.android.service.LocationService;
 import fr.gdelente.android.service.LocationService.LocationBinder;
 
@@ -22,7 +21,6 @@ public class LocationHelper {
 	public LocationHelper(Context context, LocationListener listener) {
 		mContext = context;
 		mLocationListener = listener;
-		Log.d("LocationService", "listener : " + listener);
 		mConnection = new ServiceConnection() {
 
 			@Override
@@ -51,7 +49,6 @@ public class LocationHelper {
 	public void onStart() {
 		Intent intent = new Intent(mContext, LocationService.class);
 		mContext.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-		Log.d("LocationService", "Sending bind request");
 	}
 
 	public Location getLocation() {

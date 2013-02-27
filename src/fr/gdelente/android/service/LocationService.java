@@ -36,6 +36,11 @@ public class LocationService extends Service implements LocationListener {
 	private ArrayList<LocationListener> mListeners = new ArrayList<LocationListener>();
 	private Location mLastLocation = null;
 	private ILastLocationFinder mLocationFinder = null;
+	// Maximum distance accuracy of the last known location before requesting
+	// location update
+	private static final int MAX_DISTANCE_LIMIT = 1000;
+	// Maximum time of the last known location before requesting location update
+	private static final long MAX_TIME_LIMIT = 5 * 60 * 1000;
 
 	/**
 	 * Class used for the client Binder. Because we know this service always
@@ -61,10 +66,10 @@ public class LocationService extends Service implements LocationListener {
 
 	@Override
 	public void onLocationChanged(Location location) {
+		Log.d("LocationService",
+				"OnLocationChanged : " + location.getAccuracy());
 		mLastLocation = location;
-		Log.d("LocationService", "location " + location);
 		for (LocationListener listener : mListeners) {
-			Log.d("LocationService", "Listener " + listener);
 			listener.onLocationChanged(location);
 		}
 	}
@@ -96,10 +101,12 @@ public class LocationService extends Service implements LocationListener {
 		Log.d("LocationService", "onCreate");
 		mLocationFinder = PlatformSpecificImplementationFactory
 				.getLastLocationFinder(this, this);
-		Location location = mLocationFinder.getLastBestLocation(10, 1000);
+		Location location = mLocationFinder.getLastBestLocation(
+				MAX_DISTANCE_LIMIT, MAX_TIME_LIMIT);
 		if (location != null) {
 			onLocationChanged(location);
 		}
+
 	}
 
 	@Override

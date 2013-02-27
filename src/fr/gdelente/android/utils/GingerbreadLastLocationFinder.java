@@ -18,17 +18,16 @@ package fr.gdelente.android.utils;
 
 import java.util.List;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Log;
 
 /**
@@ -47,10 +46,10 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 	protected static String TAG = "LastLocationFinder";
 	protected static String SINGLE_LOCATION_UPDATE_ACTION = "com.radioactiveyak.places.SINGLE_LOCATION_UPDATE_ACTION";
 
-	protected LocationListener locationListener;
-	protected LocationManager locationManager;
-	protected Context context;
-	protected Criteria criteria;
+	protected LocationListener mLocationListener;
+	protected LocationManager mLocationManager;
+	protected Context mContext;
+	protected Criteria mCriteria;
 
 	/**
 	 * Construct a new Gingerbread Last Location Finder.
@@ -60,16 +59,16 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 	 */
 	public GingerbreadLastLocationFinder(Context context,
 			LocationListener locationListener) {
-		this.context = context;
-		this.locationListener = locationListener;
-		locationManager = (LocationManager) context
+		mContext = context;
+		mLocationListener = locationListener;
+		mLocationManager = (LocationManager) context
 				.getSystemService(Context.LOCATION_SERVICE);
 		// Coarse accuracy is specified here to get the fastest possible result.
 		// The calling Activity will likely (or have already) request ongoing
 		// updates using the Fine location provider.
-		criteria = new Criteria();
+		mCriteria = new Criteria();
 		// FIXME Change to LOW
-		criteria.setAccuracy(Criteria.ACCURACY_LOW);
+		mCriteria.setAccuracy(Criteria.ACCURACY_LOW);
 	}
 
 	/**
@@ -86,6 +85,7 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 	 */
 	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	public Location getLastBestLocation(int minDistance, long minTime) {
+
 		Location bestResult = null;
 		float bestAccuracy = Float.MAX_VALUE;
 		long bestTime = Long.MIN_VALUE;
@@ -93,9 +93,9 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 		// Iterate through all the providers on the system, keeping
 		// note of the most accurate result within the acceptable time limit.
 		// If no result is found within maxTime, return the newest Location.
-		List<String> matchingProviders = locationManager.getAllProviders();
+		List<String> matchingProviders = mLocationManager.getAllProviders();
 		for (String provider : matchingProviders) {
-			Location location = locationManager.getLastKnownLocation(provider);
+			Location location = mLocationManager.getLastKnownLocation(provider);
 			if (location != null) {
 				float accuracy = location.getAccuracy();
 				long time = location.getTime();
@@ -119,33 +119,48 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 		// This check simply implements the same conditions we set when
 		// requesting regular
 		// location updates every [minTime] and [minDistance].
-		if (locationListener != null
+		if (mLocationListener != null
 				&& (bestTime < minTime || bestAccuracy > minDistance)) {
-			Log.d("LocationService", "Requesting single update");
 
-			locationManager.requestSingleUpdate(criteria, locationListener,
+			mLocationManager.requestSingleUpdate(mCriteria, mLocationListener,
 					null);
 
 			Log.d("LocationService", "Requesting location updates with "
-					+ locationListener);
+					+ mLocationListener);
 
 		}
-
 		return bestResult;
+	}
+
+	private void enableTestProvider() {
+		mLocationManager.removeTestProvider("test");
+		mLocationManager.addTestProvider("test", "requiresNetwork" == "",
+				"requiresSatellite" == "", "requiresCell" == "",
+				"hasMonetaryCost" == "", "supportsAltitude" == "",
+				"supportsSpeed" == "", "supportsBearing" == "",
+
+				android.location.Criteria.POWER_LOW,
+				android.location.Criteria.ACCURACY_COARSE);
+
+		mLocationManager.setTestProviderEnabled("test", true);
+
+		mLocationManager.setTestProviderStatus("test",
+				LocationProvider.AVAILABLE, null, System.currentTimeMillis());
+
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void setChangedLocationListener(LocationListener l) {
-		locationListener = l;
+		mLocationListener = l;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void cancel() {
-		Log.d("LocationService", "Removing updates with " + locationListener);
-		locationManager.removeUpdates(locationListener);
+		Log.d("LocationService", "Removing updates with " + mLocationListener);
+		mLocationManager.removeUpdates(mLocationListener);
 	}
 }
