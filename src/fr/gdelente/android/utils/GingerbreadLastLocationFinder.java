@@ -18,7 +18,6 @@ package fr.gdelente.android.utils;
 
 import java.util.List;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.location.Criteria;
@@ -27,8 +26,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.Build;
-import android.os.SystemClock;
-import android.util.Log;
 
 /**
  * Optimized implementation of Last Location Finder for devices running
@@ -124,10 +121,6 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 
 			mLocationManager.requestSingleUpdate(mCriteria, mLocationListener,
 					null);
-
-			Log.d("LocationService", "Requesting location updates with "
-					+ mLocationListener);
-
 		}
 		return bestResult;
 	}
@@ -160,7 +153,6 @@ public class GingerbreadLastLocationFinder implements ILastLocationFinder {
 	 * {@inheritDoc}
 	 */
 	public void cancel() {
-		Log.d("LocationService", "Removing updates with " + mLocationListener);
 		mLocationManager.removeUpdates(mLocationListener);
 	}
 }

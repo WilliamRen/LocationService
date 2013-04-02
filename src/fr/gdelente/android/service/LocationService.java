@@ -1,46 +1,60 @@
 /*
- * Copyright (C) 2011 Guillaume Delente
+ * Copyright (C) 2013 Guillaume Delente
  *
- * This file is part of OpenBike.
+ * This file is part of LocationService.
  *
- * OpenBike is free software: you can redistribute it and/or modify
+ * LocationService is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * OpenBike is distributed in the hope that it will be useful,
+ * LocationService is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with OpenBike.  If not, see <http://www.gnu.org/licenses/>.
+ * along with LocationService.  If not, see <http://www.gnu.org/licenses/>.
  */
 package fr.gdelente.android.service;
 
 import java.util.ArrayList;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
+import android.provider.Settings;
 import fr.gdelente.android.utils.ILastLocationFinder;
 import fr.gdelente.android.utils.PlatformSpecificImplementationFactory;
 
+/**
+ * 
+ * Get user's location as quickly as possible and easily share it across
+ * multiple activities via this bound service.
+ * 
+ * Use the LocationHelper in your app and enjoy!
+ * 
+ */
 public class LocationService extends Service implements LocationListener {
 
+	// Maximum distance accuracy of the last known
+	// location before requesting location update
+	private static final int MAX_DISTANCE_LIMIT = 100;
+
+	// Maximum time of the last known location before requesting location update
+	private static final long MAX_TIME_LIMIT = 5 * 60 * 1000;
+
 	private final IBinder mBinder = new LocationBinder();
+
 	private ArrayList<LocationListener> mListeners = new ArrayList<LocationListener>();
 	private Location mLastLocation = null;
 	private ILastLocationFinder mLocationFinder = null;
-	// Maximum distance accuracy of the last known location before requesting
-	// location update
-	private static final int MAX_DISTANCE_LIMIT = 1000;
-	// Maximum time of the last known location before requesting location update
-	private static final long MAX_TIME_LIMIT = 5 * 60 * 1000;
+	private boolean mNoProviderEnabled = true;
 
 	/**
 	 * Class used for the client Binder. Because we know this service always
@@ -66,8 +80,6 @@ public class LocationService extends Service implements LocationListener {
 
 	@Override
 	public void onLocationChanged(Location location) {
-		Log.d("LocationService",
-				"OnLocationChanged : " + location.getAccuracy());
 		mLastLocation = location;
 		for (LocationListener listener : mListeners) {
 			listener.onLocationChanged(location);
@@ -76,19 +88,17 @@ public class LocationService extends Service implements LocationListener {
 
 	@Override
 	public void onProviderDisabled(String provider) {
-		// TODO Auto-generated method stub
 
 	}
 
 	@Override
 	public void onProviderEnabled(String provider) {
-		// TODO Auto-generated method stub
 
 	}
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
-		// Put enabled providers in extras
+
 	}
 
 	public Location getLocation() {
@@ -98,7 +108,6 @@ public class LocationService extends Service implements LocationListener {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		Log.d("LocationService", "onCreate");
 		mLocationFinder = PlatformSpecificImplementationFactory
 				.getLastLocationFinder(this, this);
 		Location location = mLocationFinder.getLastBestLocation(
@@ -106,12 +115,27 @@ public class LocationService extends Service implements LocationListener {
 		if (location != null) {
 			onLocationChanged(location);
 		}
-
+		String provider = Settings.Secure.getString(getContentResolver(),
+				Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+		if (!"".equals(provider)) {
+			LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+			final boolean gpsEnabled = locationManager
+					.isProviderEnabled(LocationManager.GPS_PROVIDER);
+			final boolean networkEnabled = locationManager
+					.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+			mNoProviderEnabled = !gpsEnabled && !networkEnabled;
+		}
+		//TODO provide own interface for notifying 
+		// that no providers are available
+		if (mNoProviderEnabled) {
+			for (LocationListener listener : mListeners) {
+				listener.onProviderDisabled(null);
+			}
+		}
 	}
 
 	@Override
 	public void onDestroy() {
-		Log.d("LocationService", "onDestroy");
 		mLocationFinder.cancel();
 		super.onDestroy();
 	}
@@ -120,6 +144,8 @@ public class LocationService extends Service implements LocationListener {
 		mListeners.add(locationListener);
 		if (mLastLocation != null)
 			locationListener.onLocationChanged(mLastLocation);
+		if (mNoProviderEnabled)
+			locationListener.onProviderDisabled(null);
 	}
 
 	public void removeLocationListener(LocationListener locationListener) {

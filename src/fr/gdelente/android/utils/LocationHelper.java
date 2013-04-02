@@ -10,6 +10,10 @@ import android.os.IBinder;
 import fr.gdelente.android.service.LocationService;
 import fr.gdelente.android.service.LocationService.LocationBinder;
 
+/**
+ * Use an instance of this Helper in your activities to make them location
+ * aware, as described in the README
+ */
 public class LocationHelper {
 
 	LocationListener mLocationListener = null;
